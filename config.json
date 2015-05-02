@@ -1,0 +1,21 @@
+{
+  "db": {
+    "client": "mysql",
+    "connection": {
+      "host": "localhost",
+      "user": "icarelite",
+      "password": "icarelite",
+      "database": "icare_lite"
+    },
+    "debug": false,
+    "pool": {
+      "min": 0,
+      "max": 500
+    }
+  },
+  "extractedPath": "./tmp/extracted",
+  "backupPath": "./tmp/backup",
+  "filesPath": "./tmp/files",
+  "isBackup": false,
+  "removeExtracted": true
+}
