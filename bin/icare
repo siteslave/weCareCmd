@@ -20,15 +20,14 @@ var moment = require('moment'),
 require('q-foreach')(Q);
 
 program
-    .version('0.1.0')
+    .version('0.1.5')
     .usage('[option] ...')
     .option('-t, --test', 'Test MySQL Connection')
-    .option('-i, --import', 'Start import files')
     .option('-f, --file <file | directory>', 'Import single file or multiple files')
     .option('-c, --config <file>', 'Set configure file')
     .option('-a, --all', 'Import all files in directory')
     .option('-l, --list', 'Get wating files list')
-    .option('-n, --init', 'Create configure fule')
+    .option('-n, --init', 'Create configure file')
     .parse(process.argv);
 
 if (program.config) {
