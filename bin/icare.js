@@ -28,6 +28,7 @@ program
     .option('-c, --config <file>', 'Set configure file')
     .option('-a, --all', 'Import all files in directory')
     .option('-l, --list', 'Get wating files list')
+    .option('-n, --init', 'Create configure file')
     .parse(process.argv);
 
 if (program.config) {
@@ -144,5 +145,40 @@ if (program.config) {
 
 
 } else {
-    console.log('No configure file found!');
+
+    if (program.init) {
+        console.log('Writing configure file...');
+        var configData = {
+          "db": {
+            "client": "mysql",
+            "connection": {
+              "host": "localhost",
+              "user": "icarelite",
+              "password": "icarelite",
+              "database": "icare_lite"
+            },
+            "debug": false,
+            "pool": {
+              "min": 0,
+              "max": 500
+            }
+          },
+          "extractedPath": "./tmp/extracted",
+          "backupPath": "./tmp/backup",
+          "filesPath": "./tmp/files",
+          "isBackup": false,
+          "removeExtracted": false
+      };
+
+        fse.writeJson('./config.json', configData, function (err) {
+            if (err) {
+                console.log(colors.red('Error!'));
+                console.log(err);
+            } else {
+                console.log(colors.green('File configure.json created.'));
+            }
+        });
+    } else {
+        console.log('No configure file found!');
+    }
 }
