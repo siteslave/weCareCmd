@@ -17,5 +17,5 @@
   "backupPath": "./tmp/backup",
   "filesPath": "./tmp/files",
   "isBackup": false,
-  "removeExtracted": true
+  "removeExtracted": false
 }
