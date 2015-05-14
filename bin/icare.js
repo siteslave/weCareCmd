@@ -28,7 +28,7 @@ program
     .option('-c, --config <file>', 'Set configure file')
     .option('-a, --all', 'Import all files in directory')
     .option('-l, --list', 'Get wating files list')
-    .option('-n, --init', 'Create configure file')
+    .option('-n, --init', 'Create configure fule')
     .parse(process.argv);
 
 if (program.config) {
@@ -83,6 +83,7 @@ if (program.config) {
                                     defer.resolve();
                                 }, function (err) {
                                     console.log(colors.blue('- ' + path.basename(v).toUpperCase()) + '...' + colors.red('FAILED'));
+                                    console.log(err);
                                 });
 
                             return defer.promise;
@@ -90,34 +91,53 @@ if (program.config) {
                         }).then(function () {
 
                             console.log(colors.green('Success.'));
+                            process.exit(0);
 
                         });
 
                     } else {
                         console.log('File(s) not found!');
+                        process.exit(1);
                     }
 
                 } else {
-                    console.log('Starting import file...' + colors.green(path.basename(program.file)));
-                    // Create new extract path
-                    var rnd = new Random();
 
-                    var rndPath = path.join(config.extractedPath, rnd.string(20));
-                    // Create directory
-                    fse.ensureDirSync(rndPath);
-                    // Extract zip file
-                    Zip.extractFile(program.file, rndPath);
-                    // Get files list
-                    var files = Zip.getFilesList(rndPath);
+                    fs.access(program.file, fs.R_OK, function (err) {
+                        if (err) {
+                            console.log(colors.red('Can\'t read the file.'));
+                            process.exit(1);
+                        } else {
+                            if (path.extname(program.file).toUpperCase() == '.ZIP') {
 
-                    Import.doImport(files, db)
-                        .then(function () {
-                            console.log(colors.blue('- ' + path.basename(path.basename(program.file)).toUpperCase()) + '...' + colors.green('OK'));
-                            process.exit(0);
-                        }, function (err) {
-                            console.log(colors.blue('- ' + path.basename(path.basename(program.file)).toUpperCase()) + '...' + colors.red('FAILED'));
-                        });
+                                console.log('Starting import file...' + colors.green(path.basename(program.file)));
+                                // Create new extract path
+                                var rnd = new Random();
 
+                                var rndPath = path.join(config.extractedPath, rnd.string(20));
+                                // Create directory
+                                fse.ensureDirSync(rndPath);
+                                // Extract zip file
+                                Zip.extractFile(program.file, rndPath);
+                                // Get files list
+                                var files = Zip.getFilesList(rndPath);
+
+                                Import.doImport(files, db)
+                                    .then(function () {
+                                        console.log(colors.blue('- ' + path.basename(path.basename(program.file)).toUpperCase()) + '...' + colors.green('OK'));
+                                        process.exit(0);
+                                    }, function (err) {
+                                        console.log(colors.blue('- ' + path.basename(path.basename(program.file)).toUpperCase()) + '...' + colors.red('FAILED'));
+                                        process.exit(1);
+                                    });
+
+                            } else {
+                                console.log(colors.red('No zip file found!'));
+                                process.exit(1);
+                            }
+
+                        }
+
+                    });
                 }
 
             }
