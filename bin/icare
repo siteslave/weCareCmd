@@ -19,13 +19,14 @@ var moment = require('moment'),
 
 require('q-foreach')(Q);
 
+var rnd = new Random();
+
 program
     .version('0.1.5')
     .usage('[option] ...')
     .option('-t, --test', 'Test MySQL Connection')
     .option('-f, --file <file | directory>', 'Import single file or multiple files')
     .option('-c, --config <file>', 'Set configure file')
-    .option('-a, --all', 'Import all files in directory')
     .option('-l, --list', 'Get wating files list')
     .option('-n, --init', 'Create configure file')
     .parse(process.argv);
@@ -34,7 +35,7 @@ if (program.config) {
 
     fs.access(program.config, fs.R_OK, function (err) {
         if (err) {
-            console.log('Configuration file not found!');
+            console.log('Configure file not found!');
             process.exit(1);
         } else {
             /* Read configuration file */
@@ -66,8 +67,6 @@ if (program.config) {
 
                         Q.forEach(zipFiles, function (v) {
                             var defer = Q.defer();
-
-                            var rnd = new Random();
                             var rndPath = path.join(config.extractedPath, rnd.string(20));
                             // Create directory
                             fse.ensureDirSync(rndPath);
@@ -110,8 +109,6 @@ if (program.config) {
 
                                 console.log('Starting import file...' + colors.green(path.basename(program.file)));
                                 // Create new extract path
-                                var rnd = new Random();
-
                                 var rndPath = path.join(config.extractedPath, rnd.string(20));
                                 // Create directory
                                 fse.ensureDirSync(rndPath);
@@ -141,12 +138,13 @@ if (program.config) {
 
             }
 
+            // Test connection
             if (program.test) {
                 Connection.testConnection(db);
             }
 
+            // Show file list
             if (program.list) {
-                console.log('Current files.');
                 var files = finder.in(config.filesPath).findFiles();
                 var i = 0;
 
@@ -169,24 +167,25 @@ if (program.config) {
         console.log('Writing configure file...');
         var configData = {
           "db": {
-            "client": "mysql",
-            "connection": {
-              "host": "localhost",
-              "user": "icarelite",
-              "password": "icarelite",
-              "database": "icare_lite"
-            },
-            "debug": false,
-            "pool": {
-              "min": 0,
-              "max": 500
-            }
+              "client": "mysql",
+              "connection": {
+                  "host": "localhost",
+                  "user": "icarelite",
+                  "password": "icarelite",
+                  "database": "icare_lite"
+              },
+              "debug": false,
+              "pool": {
+                  "min": 0,
+                  "max": 500
+              }
           },
           "extractedPath": "./tmp/extracted",
           "backupPath": "./tmp/backup",
           "filesPath": "./tmp/files",
           "isBackup": false,
           "removeExtracted": false
+
       };
 
         fse.writeJson('./config.json', configData, function (err) {
