@@ -1,21 +1,14 @@
 {
   "db": {
-    "client": "mysql",
-    "connection": {
-      "host": "localhost",
-      "user": "icarelite",
-      "password": "icarelite",
-      "database": "icare_lite"
-    },
-    "debug": false,
-    "pool": {
-      "min": 0,
-      "max": 500
-    }
+    "host": "localhost",
+    "port": 27017,
+    "user": "khdc",
+    "password": "khdc",
+    "database": "khdc"
   },
   "extractedPath": "./tmp/extracted",
   "backupPath": "./tmp/backup",
   "filesPath": "./tmp/files",
-  "isBackup": false,
-  "removeExtracted": false
+  "isBackup": true,
+  "removeExtracted": true
 }

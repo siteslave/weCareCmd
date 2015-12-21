@@ -1,0 +1,219 @@
+#!/usr/bin/env node
+
+"use strict";
+
+/* Modules dependencies */
+var moment = require('moment'),
+  _ = require('lodash'),
+  path = require('path'),
+  fse = require('fs-extra'),
+  fs = require('fs'),
+  finder = require('fs-finder'),
+  Random = require('random-js'),
+  Q = require('q'),
+  program = require('commander'),
+  colors = require('cli-color'),
+  rimraf = require('rimraf'),
+  mv = require('mv'),
+
+// Dependencies for import file
+  Connection = require('../lib/Connection'),
+  Zip = require('../lib/Zip'),
+  Import = require('../lib/Import');
+
+require('q-foreach')(Q);
+
+var rnd = new Random();
+
+program
+  .version('0.1.5')
+  .usage('[option] ...')
+  .option('-t, --test', 'Test MongoDB Connection')
+  .option('-f, --file <file | directory>', 'Import single file or multiple files')
+  .option('-c, --config <file>', 'Set configure file')
+  .option('-l, --list', 'Get wating files list')
+  .option('-n, --init', 'Create configure file')
+  .parse(process.argv);
+
+if (program.config) {
+
+  fs.access(program.config, fs.R_OK, function (err) {
+    if (err) {
+      console.log('Configure file not found!');
+      process.exit(1);
+    } else {
+      /* Read configuration file */
+      var config = fse.readJsonSync(program.config);
+
+      fse.ensureDirSync(config.extractedPath);
+      fse.ensureDirSync(config.backupPath);
+      fse.ensureDirSync(config.filesPath);
+
+      var backupPath = config.backupPath;
+      var isBackup = config.isBackup;
+      var isRemoveExtracted = config.removeExtracted;
+
+      var fileLocation = program.file ? program.file : config.filesPath;
+
+      var url = Connection.getUrl(config.db);
+
+      if (fileLocation) {
+
+        // Check file is directory or file
+        var isDirectory = fs.lstatSync(fileLocation).isDirectory();
+
+        if (isDirectory) {
+          // Get file list
+          var files = finder.in(fileLocation).findFiles();
+          var zipFiles = [];
+
+          //console.log(files);
+
+          _.forEach(files, function(v) {
+            if (path.extname(v).toUpperCase() == '.ZIP') {
+              zipFiles.push(v);
+            }
+          });
+
+          if (zipFiles.length) {
+
+            Q.forEach(zipFiles, function (v) {
+              console.log('Importing...' + colors.blue(path.basename(v)));
+              var defer = Q.defer();
+              var rndPath = path.join(config.extractedPath, rnd.string(20));
+              // Create directory
+              fse.ensureDirSync(rndPath);
+              // Extract zip file
+              Zip.extractFile(v, rndPath);
+              // Get files list
+              var _files = Zip.getFilesList(rndPath);
+              Import.doImport(_files, url)
+                .then(function () {
+                  console.log(colors.green('OK'));
+                  defer.resolve();
+                }, function (err) {
+                  defer.reject(err);
+                  console.log(colors.red('FAILED'));
+                  console.log(err);
+                });
+
+              return defer.promise;
+
+            }).then(function () {
+              if (isRemoveExtracted) {
+                console.log(colors.red('Removing extracted path...'));
+                rimraf.sync(config.extractedPath);
+              }
+              if (isBackup) {
+                console.log(colors.red('Backing up file(s)...'));
+                mv(fileLocation, backupPath,{mkdirp: true}, (err) => {
+                  if (err) {
+                    console.log(colors.red('Backup file error: ' + JSON.stringify(err)));
+                  }
+                })
+              }
+              console.log(colors.green('Success.'));
+              process.exit(0);
+
+            });
+
+          } else {
+            console.log('File(s) not found!');
+            process.exit(1);
+          }
+
+        } else {
+
+          fs.access(fileLocation, fs.R_OK, function (err) {
+            if (err) {
+              console.log(colors.red('Can\'t read the file.'));
+              process.exit(1);
+            } else {
+              if (path.extname(fileLocation).toUpperCase() == '.ZIP') {
+                console.log('Importing...' + colors.blue(path.basename(fileLocation)));
+                // Create new extract path
+                var rndPath = path.join(config.extractedPath, rnd.string(20));
+                // Create directory
+                fse.ensureDirSync(rndPath);
+                // Extract zip file
+                Zip.extractFile(fileLocation, rndPath);
+                // Get files list
+                var _files = Zip.getFilesList(rndPath);
+
+                Import.doImport(_files, url)
+                  .then(function () {
+                    console.log(colors.green('OK'));
+                    process.exit(0);
+                  }, function (err) {
+                    console.log(err);
+                    console.log(colors.red('FAILED'));
+                    process.exit(1);
+                  });
+
+              } else {
+                console.log(colors.red('No zip file found!'));
+                process.exit(1);
+              }
+
+            }
+
+          });
+        }
+
+      }
+
+      // Test connection
+      if (program.test) {
+        Connection.testConnection(db);
+      }
+
+      // Show file list
+      if (program.list) {
+        let _files = finder.in(fileLocation).findFiles();
+        let i = 0;
+
+        _.forEach(_files, (v) => {
+          i++;
+          console.log('%d - %s', i, path.basename(v));
+        });
+
+        process.exit(0);
+
+      }
+
+    }
+  });
+
+
+} else {
+
+  if (program.init) {
+    console.log('Writing configure file...');
+    var configData = {
+      "db": {
+        "host": "localhost",
+        "port": 27017,
+        "user": "khdc",
+        "password": "khdc",
+        "database": "khdc"
+      },
+      "extractedPath": "./tmp/extracted",
+      "backupPath": "./tmp/backup",
+      "filesPath": "./tmp/files",
+      "isBackup": false,
+      "removeExtracted": false
+
+    };
+
+    fse.writeJson('./config.json', configData, (err) => {
+      if (err) {
+        console.log(colors.red('Error!'));
+        console.log(err);
+      } else {
+        console.log(colors.green('File configure.json created.'));
+      }
+    });
+  } else {
+    console.log('No configure file found!');
+  }
+}
