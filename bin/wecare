@@ -59,106 +59,112 @@ if (program.config) {
 
       if (fileLocation) {
 
-        // Check file is directory or file
-        var isDirectory = fs.lstatSync(fileLocation).isDirectory();
+        fs.lstat(fileLocation, (err, stat) => {
+          if (err) {
+            console.log(colors.red('Error: no such file or directory!'));
+          } else {
+            if (stat.isDirectory()) {
+              // Get file list
+              var files = finder.in(fileLocation).findFiles();
+              var zipFiles = [];
 
-        if (isDirectory) {
-          // Get file list
-          var files = finder.in(fileLocation).findFiles();
-          var zipFiles = [];
+              //console.log(files);
 
-          //console.log(files);
+              _.forEach(files, function(v) {
+                if (path.extname(v).toUpperCase() == '.ZIP') {
+                  zipFiles.push(v);
+                }
+              });
 
-          _.forEach(files, function(v) {
-            if (path.extname(v).toUpperCase() == '.ZIP') {
-              zipFiles.push(v);
-            }
-          });
+              if (zipFiles.length) {
 
-          if (zipFiles.length) {
+                Q.forEach(zipFiles, function (v) {
+                  console.log('Importing...' + colors.blue(path.basename(v)));
+                  var defer = Q.defer();
+                  var rndPath = path.join(config.extractedPath, rnd.string(20));
+                  // Create directory
+                  fse.ensureDirSync(rndPath);
+                  // Extract zip file
+                  Zip.extractFile(v, rndPath);
+                  // Get files list
+                  var _files = Zip.getFilesList(rndPath);
+                  Import.doImport(_files, url)
+                    .then(function () {
+                      console.log(colors.green('OK'));
+                      defer.resolve();
+                    }, function (err) {
+                      defer.reject(err);
+                      console.log(colors.red('FAILED'));
+                      console.log(err);
+                    });
 
-            Q.forEach(zipFiles, function (v) {
-              console.log('Importing...' + colors.blue(path.basename(v)));
-              var defer = Q.defer();
-              var rndPath = path.join(config.extractedPath, rnd.string(20));
-              // Create directory
-              fse.ensureDirSync(rndPath);
-              // Extract zip file
-              Zip.extractFile(v, rndPath);
-              // Get files list
-              var _files = Zip.getFilesList(rndPath);
-              Import.doImport(_files, url)
-                .then(function () {
-                  console.log(colors.green('OK'));
-                  defer.resolve();
-                }, function (err) {
-                  defer.reject(err);
-                  console.log(colors.red('FAILED'));
-                  console.log(err);
+                  return defer.promise;
+
+                }).then(function () {
+                  if (isRemoveExtracted) {
+                    console.log(colors.red('Removing extracted path...'));
+                    rimraf.sync(config.extractedPath);
+                  }
+                  if (isBackup) {
+                    let _backPath = path.join(backupPath, moment().format("YYYYMMDDHHmmss"));
+                    console.log(colors.red('Backing up file(s)...'));
+                    mv(fileLocation, _backPath, {clobber: true}, (err) => {
+                      if (err) {
+                        console.log(colors.red('Backup file error: ' + JSON.stringify(err)));
+                      } else {
+                        console.log(colors.green('Success.'));
+                        process.exit(0);
+                      }
+                    })
+                  } else {
+                    console.log(colors.green('Success.'));
+                    process.exit(0);
+                  }
                 });
 
-              return defer.promise;
-
-            }).then(function () {
-              if (isRemoveExtracted) {
-                console.log(colors.red('Removing extracted path...'));
-                rimraf.sync(config.extractedPath);
-              }
-              if (isBackup) {
-                console.log(colors.red('Backing up file(s)...'));
-                mv(fileLocation, backupPath,{mkdirp: true}, (err) => {
-                  if (err) {
-                    console.log(colors.red('Backup file error: ' + JSON.stringify(err)));
-                  }
-                })
-              }
-              console.log(colors.green('Success.'));
-              process.exit(0);
-
-            });
-
-          } else {
-            console.log('File(s) not found!');
-            process.exit(1);
-          }
-
-        } else {
-
-          fs.access(fileLocation, fs.R_OK, function (err) {
-            if (err) {
-              console.log(colors.red('Can\'t read the file.'));
-              process.exit(1);
-            } else {
-              if (path.extname(fileLocation).toUpperCase() == '.ZIP') {
-                console.log('Importing...' + colors.blue(path.basename(fileLocation)));
-                // Create new extract path
-                var rndPath = path.join(config.extractedPath, rnd.string(20));
-                // Create directory
-                fse.ensureDirSync(rndPath);
-                // Extract zip file
-                Zip.extractFile(fileLocation, rndPath);
-                // Get files list
-                var _files = Zip.getFilesList(rndPath);
-
-                Import.doImport(_files, url)
-                  .then(function () {
-                    console.log(colors.green('OK'));
-                    process.exit(0);
-                  }, function (err) {
-                    console.log(err);
-                    console.log(colors.red('FAILED'));
-                    process.exit(1);
-                  });
-
               } else {
-                console.log(colors.red('No zip file found!'));
+                console.log('File(s) not found!');
                 process.exit(1);
               }
+            } else {
+              fs.access(fileLocation, fs.R_OK, function (err) {
+                if (err) {
+                  console.log(colors.red('Can\'t read the file.'));
+                  process.exit(1);
+                } else {
+                  if (path.extname(fileLocation).toUpperCase() == '.ZIP') {
+                    console.log('Importing...' + colors.blue(path.basename(fileLocation)));
+                    // Create new extract path
+                    var rndPath = path.join(config.extractedPath, rnd.string(20));
+                    // Create directory
+                    fse.ensureDirSync(rndPath);
+                    // Extract zip file
+                    Zip.extractFile(fileLocation, rndPath);
+                    // Get files list
+                    var _files = Zip.getFilesList(rndPath);
 
+                    Import.doImport(_files, url)
+                      .then(function () {
+                        console.log(colors.green('OK'));
+                        process.exit(0);
+                      }, function (err) {
+                        console.log(err);
+                        console.log(colors.red('FAILED'));
+                        process.exit(1);
+                      });
+
+                  } else {
+                    console.log(colors.red('No zip file found!'));
+                    process.exit(1);
+                  }
+
+                }
+
+              });
             }
+          }
 
-          });
-        }
+        });
 
       }
 
