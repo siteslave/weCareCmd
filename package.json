@@ -1,6 +1,6 @@
 {
   "name": "wecare",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "weCare Command line application",
   "main": "./bin/wecare.js",
   "keywords": [
